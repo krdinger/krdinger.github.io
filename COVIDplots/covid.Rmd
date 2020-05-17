@@ -39,6 +39,14 @@ deaths = read.csv("https://covid.ourworldindata.org/data/ecdc/total_deaths.csv",
                   stringsAsFactors=FALSE)
 deaths$date = as.POSIXct(deaths$date)
 deaths$doy = round(as.numeric(difftime(deaths$date, as.POSIXct("2019-12-31"), units="days")))
+
+# World population data from worldbank.org:
+temp = tempfile()
+download.file("http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=csv", temp)
+pop = read.csv(unz(temp, "API_SP.POP.TOTL_DS2_en_csv_v2_988606.csv"),
+               skip=4, header=TRUE, stringsAsFactors=FALSE)
+rownames(pop) = pop$Country.Name
+unlink(temp)
 ```
 
 ```{r functionDef}
@@ -54,79 +62,6 @@ findTime = function(cty, deaths, D0) {
 }
 
 
-# function that makes all plots except Naive CFR
-# deaths: deaths, cases, us.deaths, or us.cases: matrix of cumulative deaths or cases
-# ctys: ctys (countries) or sts (states): list of countries or states to plot
-# cols: colors to use for each country or state
-# dc.type: "death" or "case"
-# cum.type: "Cumulative" or "Daily"
-# yaxt: "log" or "lin"
-mkPlot = function(deaths, ctys, col, dc.type, cum.type, lag=1, yaxt, day0=NULL, D0=10, xlab=NULL) {
-
-  adj = c(-0.1, 0.5)
-
-  if (cum.type == "Daily") {
-    deaths1 = diff(as.matrix(deaths[,ctys]), lag=lag)/lag
-  } else {
-    deaths1 = deaths
-    lag = 0
-  }
-
-  if (is.null(day0)) {
-    day0 = sapply(ctys, findTime, deaths=deaths, D0=D0)
-    xlab = paste("Days since ", D0, "th ", dc.type, sep="")
-  }
-
-  xlim = c(0, max(deaths$doy) - min(day0))
-  if ("China" %in% ctys) {
-    xlim = c(0, max(deaths$doy) - sort(day0)[2] + 5)
-  } else {
-    xlim = c(0, max(deaths$doy) - sort(day0)[1] + 5)
-  }
-  ylim = c(D0, max(sapply(ctys, function(cty, deaths){max(deaths[,cty], na.rm=TRUE)}, deaths=deaths1), na.rm=TRUE))
-
-  ndates = length(deaths$date)
-
-  if (dc.type == "death") {
-    main = paste(cum.type, "deaths",
-                 ifelse(lag > 1, paste("(", lag, "-day trailing average)", sep=""), ""),
-                 "through", max(deaths$date))
-    ylab = paste(cum.type, "deaths")
-  } else {
-    main = paste(cum.type, "cases",
-                 ifelse(lag > 1, paste("(", lag, "-day trailing average)", sep=""), ""),
-                 "through", max(deaths$date))
-    ylab = paste(cum.type, "cases")
-  }
-
-
-  if (yaxt == "log") {
-    linlogplot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab=xlab, ylab=ylab, main=main, grid=TRUE)
-  } else {
-    plot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab=xlab, ylab=ylab, main=main)
-    grid(NULL, lty="solid", col=gray(0.8), lwd=0.3)
-  }
-
-  for (icty in 1:length(ctys)) {
-    lines(deaths$doy[(lag+1):ndates] - day0[icty], deaths1[, ctys[icty]], col=col[icty])
-    points(deaths$doy[(lag+1):ndates] - day0[icty], deaths1[, ctys[icty]], col=col[icty], cex=0.5, pch=16)
-  }
-
-  ilabel = pmin(ndates, floor(day0 + xlim[2])) - lag
-  text(deaths$doy[ilabel+lag] - day0,
-       as.numeric(deaths1[cbind(ilabel, match(ctys, colnames(deaths1)))]),
-       ctys, col=col, adj=adj, cex=0.6)
-
-  if (yaxt == "log" && cum.type == "Cumulative") {
-    tDoubles = c(1, 2, 3, 7)
-    lapply(tDoubles, function(tDouble, D0) {
-                       abline(log10(D0), log10(2)/tDouble, lty="dashed", col=gray(0.5))
-                     }, D0=D0)
-  }
-
-  legend("topleft", legend=ctys, col=col, pch=16, cex=0.5, lty="solid")
-
-}
 
 # function that makes all plots except Naive CFR
 # deaths: deaths, cases, us.deaths, or us.cases: matrix of cumulative deaths or cases
