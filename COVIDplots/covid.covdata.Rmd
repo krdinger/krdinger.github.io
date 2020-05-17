@@ -1,0 +1,628 @@
+---
+title: "COVID-19 Plots"
+output:
+  html_document:
+    toc: true
+  pdf_document:
+    toc: true
+urlcolor: blue
+bibliography: /Users/dinger/TeX/krd.bib
+csl: /Users/dinger/Pandoc/bibstyles/american-geophysical-union.csl
+---
+
+
+```{r setup, cache=FALSE, echo=FALSE}
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, cache.lazy = FALSE, warning=FALSE,
+                      fig.width=8.5, fig.height=6, autodep=TRUE, echo=FALSE)
+```
+
+# Intro
+
+I liked the Financial Times plots for tracking the evolution of COVID-19
+(https://www.ft.com/coronavirus-latest), but then they changed to different
+plots.  So here I am more-or-less reproducing those plots (and adding some
+others).  This is generated from an `Rmarkdown` document that I'll be rerendering
+daily.
+
+# Country-level data
+
+Changed to use the data from the `covdata` `R`-package (https://kjhealy.github.io/covdata/).
+See that URL for ultimate sources of data.
+
+```{r load.covdata, echo="TRUE"}
+remotes::install_github("kjhealy/covdata")
+library(covdata)
+```
+
+```{r reformat.covnat}
+covnat$date = as.POSIXct(covnat$date)
+covnat$doy = round(as.numeric(difftime(covnat$date, as.POSIXct("2019-12-31"), units="days")))
+
+# Get this into a structure that matches what I originally used:
+deaths = t(tapply(covnat$cu_deaths,
+                     list(factor(covnat$cname, levels=sort(unique(covnat$cname))),
+                          factor(covnat$doy, levels=min(covnat$doy):max(covnat$doy))),
+                     identity))
+deaths = as.data.frame(deaths)
+dates = sort(unique(covnat$date))
+deaths$date = dates
+doys = sort(unique(covnat$doy))
+deaths$doy = doys
+
+cases = t(tapply(covnat$cu_cases,
+                    list(factor(covnat$cname, levels=sort(unique(covnat$cname))),
+                         factor(covnat$doy, levels=min(covnat$doy):max(covnat$doy))),
+                    identity))
+cases = as.data.frame(cases)
+cases$date = dates
+cases$doy = doys
+
+pops = tapply(covnat[,"pop_2018"], factor(covnat$cname, levels=sort(unique(covnat$cname))), mean)
+
+ctymap = cbind(c("United States", "United Kingdom", "New Zealand", "Korea, Republic of", "Iran, Islamic Republic of"),
+               c("United.States", "United.Kingdom", "New.Zealand",  "South.Korea",        "Iran"))
+colnames(deaths)[match(ctymap[,1], colnames(deaths))] = ctymap[,2]
+colnames(cases)[match(ctymap[,1], colnames(cases))] = ctymap[,2]
+names(pops)[match(ctymap[,1], names(pops))] = ctymap[,2]
+```
+
+
+
+```{r functionDef}
+# function that finds time when (piece-wise linear in time, log(deaths)) deaths
+# exceeds a threshold D0
+findTime = function(cty, deaths, D0) {
+  i1 = max(which(deaths[,cty] <= D0))
+  i2 = i1 + 1
+  t = deaths$doy
+  D = deaths[,cty]
+  return(t[i1] + ( (log10(D0) - log10(D[i1])) / (log10(D[i2]) - log10(D[i1])) )*(t[i2] - t[i1]) )
+
+}
+
+
+# function that makes all plots except Naive CFR
+# deaths: deaths, cases, us.deaths, or us.cases: matrix of cumulative deaths or cases
+# ctys: ctys (countries) or sts (states): list of countries or states to plot
+# cols: colors to use for each country or state
+# dc.type: "death" or "case"
+# cum.type: "Cumulative" or "Daily"
+# yaxt: "log" or "lin"
+# pc.type: "per.capita" or "absolute"
+# pops: vector of populations, will be accessed as pops[cty]
+mkPlot = function(deaths, ctys, col, dc.type, cum.type, lag=1, yaxt, day0=NULL, D0=10, xlab=NULL,
+                  pc.type="absolute", pops=NULL) {
+
+  adj = c(-0.1, 0.5)
+
+  if (cum.type == "Daily") {
+    deaths1 = diff(as.matrix(deaths[,ctys]), lag=lag)/lag
+  } else {
+    deaths1 = deaths[,ctys]
+    lag = 0
+  }
+
+  if (pc.type == "per.capita") {
+    deaths1 = deaths1 / matrix(pops[ctys], dim(deaths1)[1], dim(deaths1)[2], byrow=TRUE)
+  }
+
+  if (is.null(day0)) {
+    day0 = sapply(ctys, findTime, deaths=deaths, D0=D0)
+    xlab = paste("Days since ", D0, "th ", dc.type, sep="")
+  }
+
+  xlim = c(0, max(deaths$doy) - min(day0))
+  if ("China" %in% ctys) {
+    xlim = c(0, max(deaths$doy) - sort(day0)[2] + 5)
+  } else {
+    xlim = c(0, max(deaths$doy) - sort(day0)[1] + 5)
+  }
+  ylim = c(min(sapply(ctys, function(cty, deaths){max(deaths[,cty], na.rm=TRUE)}, deaths=deaths1), na.rm=TRUE),
+           max(sapply(ctys, function(cty, deaths){max(deaths[,cty], na.rm=TRUE)}, deaths=deaths1), na.rm=TRUE))
+
+  ndates = length(deaths$date)
+
+  if (dc.type == "death") {
+    main = paste(cum.type, "deaths",
+                 ifelse(lag > 1, paste("(", lag, "-day trailing average)", sep=""), ""),
+                 "through", max(deaths$date))
+    ylab = paste(cum.type, "deaths")
+  } else {
+    main = paste(cum.type, "cases",
+                 ifelse(lag > 1, paste("(", lag, "-day trailing average)", sep=""), ""),
+                 "through", max(deaths$date))
+    ylab = paste(cum.type, "cases")
+  }
+
+
+  if (yaxt == "log") {
+    linlogplot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab=xlab, ylab=ylab, main=main, grid=TRUE)
+  } else {
+    plot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab=xlab, ylab=ylab, main=main)
+    grid(NULL, lty="solid", col=gray(0.8), lwd=0.3)
+  }
+
+  for (icty in 1:length(ctys)) {
+    lines(deaths$doy[(lag+1):ndates] - day0[icty], deaths1[, ctys[icty]], col=col[icty])
+    points(deaths$doy[(lag+1):ndates] - day0[icty], deaths1[, ctys[icty]], col=col[icty], cex=0.5, pch=16)
+  }
+
+  ilabel = pmin(ndates, floor(day0 + xlim[2])) - lag
+  text(deaths$doy[ilabel+lag] - day0,
+       as.numeric(deaths1[cbind(ilabel, match(ctys, colnames(deaths1)))]),
+       ctys, col=col, adj=adj, cex=0.6)
+
+  if (yaxt == "log" && cum.type == "Cumulative") {
+    tDoubles = c(1, 2, 3, 7)
+    lapply(tDoubles, function(tDouble, D0) {
+                       abline(log10(D0), log10(2)/tDouble, lty="dashed", col=gray(0.5))
+                     }, D0=D0)
+  }
+
+  legend("topleft", legend=ctys, col=col, pch=16, cex=0.5, lty="solid")
+
+}
+
+```
+
+# Country-level deaths and cases {.tabset .tabset-fade}
+
+```{r setupCountries}
+ctys = c("United.States", "United.Kingdom", "New.Zealand",
+         "France", "Germany", "Italy", "Spain", "Sweden",
+         "China", "South.Korea", "Japan",
+         "Iran", "India",
+         "Brazil", "Mexico")
+
+whiten = function(col, f){rgb(t((1-f)*col2rgb(col) + f*rep(255, 3)), maxColorValue=255)}
+col = c(sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("red1", f=f)}),
+        sapply(c(0.0, 0.1, 0.2, 0.3, 0.4)*2, function(f){whiten("blue1", f=f)}),
+        sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("cyan1", f=f)}),
+        sapply(c(0.0, 0.1)*2, function(f){whiten("green1", f=f)}),
+        sapply(c(0.0, 0.1)*2, function(f){whiten("orange1", f=f)}))
+```
+
+## Cumulative deaths {.tabset .tabset-fade}
+
+### Log-scale
+
+```{r plotSeveralAlign, fig.cap="Gray dashed lines are doubling times of 1, 2, 3, and 7 days (from steepest to shallowest)", results="hide"}
+
+# we'll use this later for the time-scale for some other plots
+D0 = 10
+d.day0 = sapply(ctys, findTime, deaths=deaths, D0=D0)
+
+
+mkPlot(deaths, ctys, col, "death", "Cumulative", lag=0, yaxt="log",
+       day0=NULL, D0=10, xlab=NULL)
+
+```
+
+### Linear-scale
+
+```{r plotSeveralAlignLinear, results="hide"}
+mkPlot(deaths, ctys, col, "death", "Cumulative", lag=0, yaxt="lin",
+       day0=NULL, D0=10, xlab=NULL)
+
+
+```
+
+
+## Cumulative cases {.tabset .tabset-fade}
+
+### Log-scale
+
+```{r plotSeveralAlignCase, fig.cap="Gray dashed lines are doubling times of 1, 2, 3, and 7 days (from steepest to shallowest)", results="hide"}
+
+# we'll use this later for the time-scale for some other plots
+C0 = 100
+c.day0 = sapply(ctys, findTime, deaths=deaths, D0=C0)
+
+
+mkPlot(cases, ctys, col, "case", "Cumulative", lag=0, yaxt="log",
+       day0=NULL, D0=100, xlab=NULL)
+
+```
+
+### Linear-scale
+
+```{r plotSeveralAlignCaseLinear, results="hide"}
+
+mkPlot(cases, ctys, col, "case", "Cumulative", lag=0, yaxt="lin",
+       day0=NULL, D0=100, xlab=NULL)
+
+```
+
+
+## Daily deaths {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyDeaths}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=5, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyDeathsLinear}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=5, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyDeaths}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyDeathsLinear}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+
+```
+
+
+## Daily new cases {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyCases}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=5, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyCasesLinear}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=5, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyCases}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyCasesLinear}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+
+# Country-level naive case fatality rates {.tabset .tabset-fade}
+
+By "naive" I mean: at any point in time, divide the total cumulative number of deaths
+by the total cumulative number of confirmed cases.  This will be biased high
+because the denominator is too small because not all cases are detected (due to
+lack of testing), but on the other hand will be biased low because some current
+active cases will result in deaths later.  It should eventually converge on the true CFR if testing
+becomes widespread and the epidemic dies down.
+
+## Log-scale
+
+```{r plotCFR}
+ndates = length(deaths$date)
+adj = c(-0.1, 0.5)
+
+cfr = deaths[,ctys] / cases[,ctys]
+if ("China" %in% ctys) {
+  xlim = c(0, max(deaths$doy) - sort(d.day0)[2] + 5)
+} else {
+  xlim = c(0, max(deaths$doy) - sort(d.day0)[1] + 5)
+}
+ylim = c(0, max(cfr, na.rm=TRUE))
+ylim = c(5e-3, 0.2)
+
+linlogplot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab="Days since 10th death", ylab="Naive CFR",
+     main=paste("Naive CFR through", max(cases$date)), grid=TRUE)
+for (icty in 1:length(ctys)) {
+  lines(deaths$doy - d.day0[icty], cfr[,icty], col=col[icty])
+  points(deaths$doy - d.day0[icty], cfr[, ctys[icty]], col=col[icty], cex=0.5, pch=16)
+}
+
+ilabel = pmin(ndates, floor(d.day0 + xlim[2]))
+text(deaths$doy[ilabel] - d.day0,
+     as.numeric(cfr[cbind(ilabel, 1:length(ctys))]),
+     ctys, col=col, adj=adj, cex=0.6)
+
+
+legend("topleft", legend=ctys, col=col, pch=16, cex=0.5, lty="solid")
+
+```
+
+## Linear-scale
+
+```{r plotCFRLinear}
+cfr = deaths[,ctys] / cases[,ctys]
+ylim = c(0, max(cfr, na.rm=TRUE))
+ylim = c(0, 0.2)
+
+plot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab="Days since 10th death", ylab="Naive CFR",
+     main=paste("Naive CFR through", max(cases$date)))
+grid(NULL, col=gray(0.8), lty="solid", lwd=0.3)
+for (icty in 1:length(ctys)) {
+  lines(deaths$doy - d.day0[icty], cfr[,icty], col=col[icty])
+  points(deaths$doy - d.day0[icty], cfr[, ctys[icty]], col=col[icty], cex=0.5, pch=16)
+}
+
+ilabel = pmin(ndates, floor(d.day0 + xlim[2]))
+text(deaths$doy[ilabel] - d.day0,
+     as.numeric(cfr[cbind(ilabel, 1:length(ctys))]),
+     ctys, col=col, adj=adj, cex=0.6)
+
+
+legend("topleft", legend=ctys, col=col, pch=16, cex=0.5, lty="solid")
+
+```
+
+
+# US state-level data
+
+
+
+```{r reformat.covus}
+covus$date = as.POSIXct(covus$date)
+covus$doy = round(as.numeric(difftime(covus$date, as.POSIXct("2019-12-31"), units="days")))
+
+# Get this into a structure that matches what I originally used:
+use = which(covus$measure == "death")
+us.deaths = t(tapply(covus$count[use],
+                     list(factor(covus$state[use], levels=sort(unique(covus$state))),
+                          factor(covus$doy[use], levels=min(covus$doy):max(covus$doy))),
+                     identity))
+us.deaths = as.data.frame(us.deaths)
+dates = sort(unique(covus$date))
+us.deaths$date = dates
+doys = sort(unique(covus$doy))
+us.deaths$doy = doys
+
+use = which(covus$measure == "positive")
+us.cases = t(tapply(covus$count[use],
+                    list(factor(covus$state[use], levels=sort(unique(covus$state))),
+                         factor(covus$doy[use], levels=min(covus$doy):max(covus$doy))),
+                    identity))
+us.cases = as.data.frame(us.cases)
+us.cases$date = dates
+us.cases$doy = doys
+
+```
+
+
+# US state-level deaths and cases {.tabset .tabset-fade}
+
+```{r setupStates}
+sts = c("CA", "WA", "OR", "CO",
+        "NY", "NJ", "MA",
+        "MI", "IL", "MN",
+        "FL", "LA", "GA")
+
+
+st.col = c(sapply(c(0.0, 0.1, 0.2, 0.3)*2, function(f){whiten("orange1", f=f)}),
+           sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("blue1", f=f)}),
+           sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("purple1", f=f)}),
+           sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("green1", f=f)}))
+
+```
+
+## Cumulative deaths {.tabset .tabset-fade}
+
+### Log-scale
+
+```{r plotSeveralAlignState, fig.cap="Gray dashed lines are doubling times of 1, 2, 3, and 7 days (from steepest to shallowest)", results="hide"}
+
+# we'll use this later for the time-scale for some other plots
+D0 = 10
+d.day0 = sapply(sts, findTime, deaths=us.deaths, D0=D0)
+
+
+mkPlot(us.deaths, sts, st.col, "death", "Cumulative", lag=0, yaxt="log",
+       day0=NULL, D0=10, xlab=NULL)
+
+```
+
+### Linear-scale
+
+```{r plotSeveralAlignLinearState, results="hide"}
+mkPlot(us.deaths, sts, st.col, "death", "Cumulative", lag=0, yaxt="lin",
+       day0=NULL, D0=10, xlab=NULL)
+
+
+```
+
+## Cumulative cases {.tabset .tabset-fade}
+
+### Log-scale
+
+```{r plotSeveralAlignCaseState, fig.cap="Gray dashed lines are doubling times of 1, 2, 3, and 7 days (from steepest to shallowest)", results="hide"}
+
+mkPlot(us.cases, sts, st.col, "case", "Cumulative", lag=0, yaxt="log",
+       day0=NULL, D0=100, xlab=NULL)
+
+```
+
+### Linear-scale
+
+```{r plotSeveralAlignCaseLinearState, results="hide"}
+
+mkPlot(us.cases, sts, st.col, "case", "Cumulative", lag=0, yaxt="lin",
+       day0=NULL, D0=100, xlab=NULL)
+
+```
+
+
+## Daily deaths {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyDeathsState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=5, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyDeathsLinearState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=5, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyDeathsState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyDeathsLinearState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+
+```
+
+
+## Daily new cases {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyCasesState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=5, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyCasesLinearState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=5, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyCasesState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyCasesLinearState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+# US state-level naive case fatality rates {.tabset .tabset-fade}
+
+## Log-scale
+
+```{r plotCFRState}
+ndates = length(us.deaths$date)
+
+us.cfr = us.deaths[,sts] / us.cases[,sts]
+xlim = c(0, max(us.deaths$doy) - sort(d.day0)[1] + 5)
+ylim = c(0, max(us.cfr, na.rm=TRUE))
+ylim = c(5e-3, 0.15)
+
+linlogplot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab="Days since 10th death", ylab="Naive CFR",
+     main=paste("Naive CFR through", max(us.cases$date)), grid=TRUE)
+for (icty in 1:length(sts)) {
+  lines(us.deaths$doy - d.day0[icty], us.cfr[,icty], col=st.col[icty])
+  points(us.deaths$doy - d.day0[icty], us.cfr[, sts[icty]], col=st.col[icty], cex=0.5, pch=16)
+}
+
+ilabel = pmin(ndates, floor(d.day0 + xlim[2]))
+text(us.deaths$doy[ilabel] - d.day0,
+     as.numeric(us.cfr[cbind(ilabel, 1:length(sts))]),
+     sts, col=st.col, adj=adj, cex=0.6)
+
+
+legend("topleft", legend=sts, col=st.col, pch=16, cex=0.5, lty="solid")
+
+```
+
+## Linear-scale
+
+```{r plotCFRLinearState}
+ylim = c(5e-3, 0.15)
+
+plot(1, 1, typ='n', xlim=xlim, ylim=ylim, xlab="Days since 10th death", ylab="Naive CFR",
+     main=paste("Naive CFR through", max(us.cases$date)))
+grid(NULL, col=gray(0.8), lty="solid", lwd=0.3)
+for (icty in 1:length(sts)) {
+  lines(us.deaths$doy - d.day0[icty], us.cfr[,icty], col=st.col[icty])
+  points(us.deaths$doy - d.day0[icty], us.cfr[, sts[icty]], col=st.col[icty], cex=0.5, pch=16)
+}
+
+ilabel = pmin(ndates, floor(d.day0 + xlim[2]))
+text(us.deaths$doy[ilabel] - d.day0,
+     as.numeric(us.cfr[cbind(ilabel, 1:length(sts))]),
+     sts, col=st.col, adj=adj, cex=0.6)
+
+
+legend("topleft", legend=sts, col=st.col, pch=16, cex=0.5, lty="solid")
+
+```
