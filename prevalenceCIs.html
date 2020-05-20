@@ -517,7 +517,8 @@ rhoci3 = qbeta(c(0.025, 0.975), m+1, n-m+1)</code></pre>
   \left( 1 - P(1-\rho) - \rho \right)^{N-M}
 \]</span></p>
 <p>I don’t believe that this distribution has a common name and therefore builtin functions for calculating the normalized version of it, its cdf, quantiles, etc. don’t exist, so I’ll just do all those calculations below numerically. (It might be possible to write it in terms of beta distributions?).</p>
-<pre class="r"><code>jointlikelihood = function(P, rho, m, n, M, N) {
+<pre class="r"><code># note: unnormalized
+jointlikelihood = function(P, rho, m, n, M, N) {
     rho^m * (1-rho)^(n-m) * (P*(1-rho) + rho)^M * (1 - P*(1-rho) - rho)^(N-M)
 }</code></pre>
 <div id="joint-pdfs" class="section level2">
