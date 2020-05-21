@@ -510,7 +510,7 @@ rhoci3 = qbeta(c(0.025, 0.975), m+1, n-m+1)</code></pre>
 <div id="estimates-of-the-true-prevalence" class="section level1">
 <h1>Estimates of the true prevalence</h1>
 <p>First, as a sanity check, note that in their testing they got <span class="math inline">\(M=50\)</span> positive results from <span class="math inline">\(N = 3330\)</span> tests. If the false-positive rate were zero, this would indicate a prevalence of around <span class="math inline">\(50/3330 \approx 0.015\)</span>. But note that <em>all</em> of the 95% CIs for the false-positive rate go above 0.015. This means that it is a possibility (at the greater than 5% level) that all or nearly all of their positive tests were false-positives, and thus their 95% CIs for the (unadjusted) prevalence must include or nearly include zero (in which case their 95% CIs for adjusted prevalence should also). The fact that their 95% CIs do not go down to (near) zero indicates they have made a basic mistake.</p>
-<p>In a Bayesian framework, it is again easy to calculate a posterior distribution and from that point estimates and CIs. Ignoring, for now, the false-negative rate (that is, assuming it is zero / the sensitivity is 1), the probability of getting a positive result from a test with a false-positive rate of <span class="math inline">\(\rho\)</span> in a population with a prevalence of <span class="math inline">\(P\)</span> is just <span class="math inline">\(P + \rho*(1-P) = P(1-\rho) + \rho\)</span>. That just says that all the true positives return a positive results plus a fraction <span class="math inline">\(\rho\)</span> of the true negatives also do. And so the probability of getting a negative test result is just that subtracted from 1: <span class="math inline">\(1 - P(1-\rho) - \rho\)</span>.</p>
+<p>In a Bayesian framework, it is again easy to calculate a posterior distribution and from that point estimates and CIs. Ignoring, for now, the false-negative rate (that is, assuming it is zero / the sensitivity is 1), the probability of getting a positive result from a test with a false-positive rate of <span class="math inline">\(\rho\)</span> in a population with a prevalence of <span class="math inline">\(P\)</span> is just <span class="math inline">\(P + \rho(1-P) = P(1-\rho) + \rho\)</span>. That just says that all the true positives return a positive results plus a fraction <span class="math inline">\(\rho\)</span> of the true negatives also do. And so the probability of getting a negative test result is just that subtracted from 1: <span class="math inline">\(1 - P(1-\rho) - \rho\)</span>.</p>
 <p>So, after getting <span class="math inline">\(m\)</span> positive results from <span class="math inline">\(n\)</span> tests of known negative patients and <span class="math inline">\(M\)</span> positive results from <span class="math inline">\(N\)</span> tests from a sample of the population whose prevalence is <span class="math inline">\(P\)</span>, our posterior pdf (again assuming a uniform prior) for the joint distribution of <span class="math inline">\(\rho\)</span> and <span class="math inline">\(P\)</span> is propotional to all the factors from each test:</p>
 <p><span class="math display">\[
 \phi_{P,\rho} \propto \rho^m (1 - \rho)^{n-m} \left( P(1-\rho) + \rho \right)^M
@@ -559,7 +559,7 @@ plotpdf(m, n, M, N)</code></pre>
 \phi_P(P) = \int_0^1 \phi_{P, \rho}(P, \rho) d\rho
 \]</span></p>
 <p>As I mentioned above, I won’t mess with trying to find analytic expressions for the normalization or the integrals, but will just do them numerically.</p>
-<p>Here are plots of the marginal pdfs for <span class="math inline">\(P\)</span>, with the error bars giving the 95% CI</p>
+<p>Here are plots of the posterior marginal pdfs for <span class="math inline">\(P\)</span>, with the error bars giving the 95% CI</p>
 <pre class="r"><code>par(mfrow=c(2,2))
 
 plotPmarg = function(m, n, M, N, nP=1000, nrho=999, Plim=c(0, 0.04), rholim=c(0, 0.04)) {
@@ -694,7 +694,7 @@ P3slice = plotPslice(m, n, M, N)</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Now the lower ends of their 95% CIs are factors of 1.6, 4.3, 3.1, respectively, higher than those of these <em>incorrect</em> test-performance but not-population-adjusted CIs, more in line with the approximate factor of 2 you would expect from their population adjustment.</p>
+<p>Now the lower ends of these (incorrect) 95% CIs are factors of 1.6, 4.3, 3.1, respectively, higher than those of these <em>incorrect</em> test-performance but not-population-adjusted CIs, more in line with the approximate factor of 2 you would expect from their population adjustment - indicating that something like this is what they did in the preprint.</p>
 </div>
 </div>
 </div>
