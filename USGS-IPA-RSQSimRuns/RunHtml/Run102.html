@@ -570,7 +570,7 @@ st2 = do.stan(eqs, use=use2, alpha=alpha, c=c)</code></pre>
 <div id="aftershock-fraction-ala-zaliapinandbenzion2016-discriminating" class="section level2">
 <h2>Aftershock fraction ala <span class="citation"><em>Zaliapin and Ben-Zion</em> [2016]</span></h2>
 <pre class="r"><code>sderrh = 10
-z = zaliapin(eqs, use=use, sderrh=sderrh)
+z = zaliapin(eqs, use=use, sderrh=sderrh, est.se=TRUE)
 z2 = zaliapin(eqs, use=use2, sderrh=sderrh)</code></pre>
 <div id="using-all-events" class="section level3">
 <h3>Using all events</h3>
