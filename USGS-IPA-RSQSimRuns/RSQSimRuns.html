@@ -540,7 +540,7 @@ pre code {
 </div>
 <div id="scatter-plots-of-various-aftershock-fractions" class="section level1">
 <h1>Scatter plots of various aftershock fractions</h1>
-<p>The SS2007 and H2006 estimates are those with very late events removed. The SS2007 and Zaliapin estimates also have their 68% CIs plotted.</p>
+<p>The SS2007 and H2006 estimates are those with very late events removed. The SS2007 and Zaliapin estimates also have their 68% CIs plotted. The Zaliapin CIs are the central estimate <span class="math inline">\(\pm\)</span> the standard error estimated by <code>fitdistr()</code> for the weight of the gaussian with the smaller mean.</p>
 <pre class="r"><code>par(mfrow=c(2,2))
 
 plot(results$af.naive, results$af.ss2007.excludelate, xlim=c(0,1), ylim=c(0,1), asp=1,
