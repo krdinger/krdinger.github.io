@@ -43,9 +43,13 @@ deaths$doy = round(as.numeric(difftime(deaths$date, as.POSIXct("2019-12-31"), un
 # World population data from worldbank.org:
 temp = tempfile()
 download.file("http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=csv", temp)
-pop = read.csv(unz(temp, "API_SP.POP.TOTL_DS2_en_csv_v2_988606.csv"),
+pop = read.csv(unz(temp, "API_SP.POP.TOTL_DS2_en_csv_v2_1593924.csv"),
                skip=4, header=TRUE, stringsAsFactors=FALSE)
 rownames(pop) = pop$Country.Name
+#deaths.cty = colnames(deaths)
+#deaths.cty = gsub(".", " ", deaths.cty, fixed=TRUE)
+#ctymap = match(deaths.cty, rownames(pop))
+# deaths.cty[which(is.na(ctymap))]
 unlink(temp)
 ```
 
@@ -73,7 +77,8 @@ findTime = function(cty, deaths, D0) {
 # pc.type: "per.capita" or "absolute"
 # pops: vector of populations, will be accessed as pops[cty]
 mkPlot = function(deaths, ctys, col, dc.type, cum.type, lag=1, yaxt, day0=NULL, D0=10, xlab=NULL,
-                  pc.type="absolute", pops=NULL) {
+                  pc.type="absolute", pops=NULL, plotAll=FALSE) {
+
 
   adj = c(-0.1, 0.5)
 
@@ -168,6 +173,102 @@ col = c(sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("red1", f=f)}),
         sapply(c(0.0, 0.1)*2, function(f){whiten("orange1", f=f)}))
 ```
 
+
+## Daily deaths {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyDeaths}
+# we'll use this later for the time-scale for some other plots
+D0 = 10
+d.day0 = sapply(ctys, findTime, deaths=deaths, D0=D0)
+
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=7, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyDeathsLinear}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=7, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyDeaths}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyDeathsLinear}
+
+mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+
+```
+
+
+## Daily new cases {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyCases}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=7, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyCasesLinear}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=7, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyCases}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyCasesLinear}
+
+mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+
+
 ## Cumulative deaths {.tabset .tabset-fade}
 
 ### Log-scale
@@ -220,93 +321,6 @@ mkPlot(cases, ctys, col, "case", "Cumulative", lag=0, yaxt="lin",
 ```
 
 
-## Daily deaths {.tabset .tabset-fade}
-
-### Smoothed {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotSmoothedDailyDeaths}
-
-mkPlot(deaths, ctys, col, "death", "Daily", lag=5, yaxt="log",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-#### Linear scale
-
-```{r plotSmoothedDailyDeathsLinear}
-
-mkPlot(deaths, ctys, col, "death", "Daily", lag=5, yaxt="lin",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-
-### Raw {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotDailyDeaths}
-
-mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="log",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-#### Linear-scale
-
-```{r plotDailyDeathsLinear}
-
-mkPlot(deaths, ctys, col, "death", "Daily", lag=1, yaxt="lin",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-
-```
-
-
-## Daily new cases {.tabset .tabset-fade}
-
-### Smoothed {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotSmoothedDailyCases}
-
-mkPlot(cases, ctys, col, "case", "Daily", lag=5, yaxt="log",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-#### Linear scale
-
-```{r plotSmoothedDailyCasesLinear}
-
-mkPlot(cases, ctys, col, "case", "Daily", lag=5, yaxt="lin",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-
-### Raw {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotDailyCases}
-
-mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="log",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-#### Linear-scale
-
-```{r plotDailyCasesLinear}
-
-mkPlot(cases, ctys, col, "case", "Daily", lag=1, yaxt="lin",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
 
 
 
@@ -412,17 +426,109 @@ us.cases$doy = doys
 # US state-level deaths and cases {.tabset .tabset-fade}
 
 ```{r setupStates}
-sts = c("California", "Washington", "Oregon", "Colorado",
+sts = c("California", "Washington", "Oregon", "Colorado", "Arizona",
+        "South Dakota", "North Dakota", "Wisconsin",
         "New York", "New Jersey", "Massachusetts",
         "Michigan", "Illinois", "Minnesota",
         "Florida", "Louisiana", "Georgia")
 
-st.col = c(sapply(c(0.0, 0.1, 0.2, 0.3)*2, function(f){whiten("orange1", f=f)}),
+st.col = c(sapply(c(0.0, 0.1, 0.2, 0.3, 0.4)*2, function(f){whiten("orange1", f=f)}),
+           sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("red3", f=f)}),
            sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("blue1", f=f)}),
            sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("purple1", f=f)}),
            sapply(c(0.0, 0.1, 0.2)*2, function(f){whiten("green1", f=f)}))
 
 ```
+
+## Daily deaths {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyDeathsState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=7, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyDeathsLinearState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=7, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyDeathsState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyDeathsLinearState}
+
+mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=1, xlab="Days since 10th death")
+
+
+```
+
+
+## Daily new cases {.tabset .tabset-fade}
+
+### Smoothed {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotSmoothedDailyCasesState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=7, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear scale
+
+```{r plotSmoothedDailyCasesLinearState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=7, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
+### Raw {.tabset .tabset-fade}
+
+#### Log-scale
+
+```{r plotDailyCasesState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="log",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+#### Linear-scale
+
+```{r plotDailyCasesLinearState}
+
+mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="lin",
+       day0=d.day0, D0=10, xlab="Days since 10th death")
+
+```
+
+
 
 ## Cumulative deaths {.tabset .tabset-fade}
 
@@ -470,93 +576,6 @@ mkPlot(us.cases, sts, st.col, "case", "Cumulative", lag=0, yaxt="lin",
 ```
 
 
-## Daily deaths {.tabset .tabset-fade}
-
-### Smoothed {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotSmoothedDailyDeathsState}
-
-mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=5, yaxt="log",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-#### Linear scale
-
-```{r plotSmoothedDailyDeathsLinearState}
-
-mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=5, yaxt="lin",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-
-### Raw {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotDailyDeathsState}
-
-mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="log",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-```
-
-#### Linear-scale
-
-```{r plotDailyDeathsLinearState}
-
-mkPlot(us.deaths, sts, st.col, "death", "Daily", lag=1, yaxt="lin",
-       day0=d.day0, D0=1, xlab="Days since 10th death")
-
-
-```
-
-
-## Daily new cases {.tabset .tabset-fade}
-
-### Smoothed {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotSmoothedDailyCasesState}
-
-mkPlot(us.cases, sts, st.col, "case", "Daily", lag=5, yaxt="log",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-#### Linear scale
-
-```{r plotSmoothedDailyCasesLinearState}
-
-mkPlot(us.cases, sts, st.col, "case", "Daily", lag=5, yaxt="lin",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-
-### Raw {.tabset .tabset-fade}
-
-#### Log-scale
-
-```{r plotDailyCasesState}
-
-mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="log",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
-
-#### Linear-scale
-
-```{r plotDailyCasesLinearState}
-
-mkPlot(us.cases, sts, st.col, "case", "Daily", lag=1, yaxt="lin",
-       day0=d.day0, D0=10, xlab="Days since 10th death")
-
-```
 
 
 # US state-level naive case fatality rates {.tabset .tabset-fade}

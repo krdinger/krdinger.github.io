@@ -1,0 +1,8 @@
+base
+rmarkdown
+EQSimCompUtils
+RSQSimPostProcess
+RSQSimBuildFaultModels
+knitr
+pracma
+cubature

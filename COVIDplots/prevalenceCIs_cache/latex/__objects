@@ -1,0 +1,15 @@
+plotRhoEstimates	m	meanrho1	meanrho2	meanrho3	moderho1	moderho2	moderho3	n	nrho	rho	rhoci1	rhoci2	rhoci3	rholim
+defLikelihood	jointlikelihood
+plotpdfs	m	M	n	N	plotpdf
+plotPmarg	m	n	P1	P2	P3	plotPmarg
+plotSlice	m	n	P1slice	P2slice	P3slice	plotPslice
+defLikelihoodExactEta	jointlikelihoodExactEta
+plotPmargExactEta	eta	P3ExactEta	plotPmargExactEta
+defLikelihoodEta	jointlikelihoodEta
+plotPmargEta	m	mu	n	nu	plotPmargEta
+plotEtaPosterior	eta
+defMarginalLikelihoods	K	likelihood_eta	likelihood_P	likelihood_P.eta	likelihood_P.rho	likelihood_P.rho.eta	likelihood_rho	likelihood_rho.eta
+defMarginalLikelihoods2	K	likelihood_eta	likelihood_P	likelihood_P.eta	likelihood_P.rho	likelihood_P.rho.eta	likelihood_rho	likelihood_rho.eta
+plot2dmarg	eta	etalim	j	K1	m	M	mu	n	N	neta	nP	nrho	nu	P	Plim	rho	rholim
+plot1dmarg	ceta	cP	crho	deta	dP	drho	eta	etaCI	etalim	etamean	etamode	neta	nP	nrho	P	PCI	Plim	Pmean	Pmode	rho	rhoCI	rholim	rhomean	rhomode
+plot1dmarg-update	ceta.2	cP.2	crho.2	deta.2	dP.2	drho.2	etaCI.2	etamean.2	etamode.2	K1	m	M	mu	n	N	nu	PCI.2	Pmean.2	Pmode.2	rhoCI.2	rhomean.2	rhomode.2

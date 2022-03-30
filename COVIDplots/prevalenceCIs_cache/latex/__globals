@@ -1,0 +1,15 @@
+plotRhoEstimates	c	dbeta	max	par	plot	qbeta	seq
+defLikelihood	^
+plotpdfs	c	diff	image	jet	jointlikelihood	mean	outer	par	paste	seq	sum
+plotPmarg	<	>	apply	arrows	c	cumsum	diff	jointlikelihood	list	M	max	min	N	outer	par	paste	plot	return	seq	sum	which	which.max
+plotSlice	<	>	arrows	c	cumsum	diff	jointlikelihood	list	M	max	min	N	outer	par	paste	plot	return	seq	signif	sum	which	which.max
+defLikelihoodExactEta	^
+plotPmargExactEta	<	>	apply	arrows	c	cumsum	diff	jointlikelihoodExactEta	list	m	M	max	min	n	N	outer	par	paste	plot	return	seq	sum	which	which.max
+defLikelihoodEta	^
+plotPmargEta	[<-	<	>	apply	array	arrows	c	cumsum	diff	for	jointlikelihoodEta	list	max	min	outer	paste	plot	return	seq	sum	which	which.max
+plotEtaPosterior	dbeta	plot	seq
+defMarginalLikelihoods	[<-	==	||	$	for	if	integrate	jointlikelihoodEta	length	rep	return	stopifnot
+defMarginalLikelihoods2	[<-	==	||	$	c	for	hcubature	if	jointlikelihoodEta	length	rep	return	stopifnot
+plot2dmarg	c	image	jet	K	likelihood_P.eta	likelihood_P.rho	likelihood_rho.eta	outer	par	paste	seq
+plot1dmarg	<	>	arrows	c	cumsum	diff	K1	likelihood_eta	likelihood_P	likelihood_rho	m	M	max	mean	min	mu	n	N	nu	par	plot	seq	sum	which	which.max
+plot1dmarg-update	<	>	arrows	c	cumsum	diff	eta	K	likelihood_eta	likelihood_P	likelihood_rho	max	mean	min	P	par	plot	rho	sum	which	which.max
